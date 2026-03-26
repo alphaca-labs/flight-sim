@@ -87,6 +87,53 @@ canvas#game-canvas { display: block; }
 #score-panel .cp-label { font-size: 10px; color: var(--hud-white-dim); letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
 #score-panel .elapsed { font-size: 16px; color: var(--hud-white); text-shadow: 0 0 6px rgba(232,240,255,0.2); letter-spacing: 1px; font-variant-numeric: tabular-nums; margin-top: 8px; }
 #score-panel .time-label { font-size: 10px; color: var(--hud-white-dim); letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
+#score-panel .kill-count { font-size: 22px; font-weight: 700; color: var(--hud-red); text-shadow: var(--glow-red); letter-spacing: 2px; font-variant-numeric: tabular-nums; margin-top: 12px; }
+#score-panel .kill-label { font-size: 10px; color: var(--hud-white-dim); letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
+
+/* Weapon panel */
+#weapon-panel {
+  position: absolute; bottom: 32px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 16px; padding: 8px 20px;
+}
+#weapon-panel .ammo-dots { display: flex; gap: 6px; }
+#weapon-panel .ammo-dot {
+  width: 10px; height: 28px; border-radius: 2px;
+  background: var(--hud-red); box-shadow: var(--glow-red);
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+#weapon-panel .ammo-dot.empty { background: rgba(255,46,76,0.15); box-shadow: none; }
+#weapon-panel .weapon-label { font-size: 11px; color: var(--hud-white-dim); letter-spacing: 2px; text-transform: uppercase; }
+#weapon-panel .weapon-key { font-size: 12px; color: var(--hud-red); background: rgba(255,46,76,0.1); border: 1px solid rgba(255,46,76,0.3); border-radius: 3px; padding: 2px 8px; letter-spacing: 1px; margin-left: 4px; }
+#weapon-panel .reload-bar {
+  width: 80px; height: 4px; background: rgba(255,46,76,0.15); border-radius: 2px; overflow: hidden; margin-top: 4px;
+}
+#weapon-panel .reload-fill {
+  height: 100%; background: var(--hud-red); box-shadow: 0 0 6px rgba(255,46,76,0.4);
+  border-radius: 2px; transition: width 0.1s linear;
+}
+
+/* Lock indicator */
+#lock-indicator {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: 80px; height: 80px; pointer-events: none; opacity: 0; transition: opacity 0.15s ease;
+}
+#lock-indicator.active { opacity: 1; }
+#lock-indicator .lock-bracket {
+  position: absolute; width: 16px; height: 16px;
+  border-color: var(--hud-red); border-style: solid;
+}
+#lock-indicator .lock-bracket.tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+#lock-indicator .lock-bracket.tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+#lock-indicator .lock-bracket.bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+#lock-indicator .lock-bracket.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+#lock-indicator .lock-text {
+  position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+  font-size: 12px; font-weight: 700; color: var(--hud-red); text-shadow: var(--glow-red);
+  letter-spacing: 3px; animation: hud-blink 0.6s ease-in-out infinite;
+}
+#lock-indicator.locked .lock-bracket { border-color: var(--hud-red); filter: drop-shadow(0 0 4px rgba(255,46,76,0.6)); }
+#lock-indicator.tracking .lock-bracket { border-color: var(--hud-amber); filter: drop-shadow(0 0 4px rgba(255,184,0,0.6)); }
+#lock-indicator.tracking .lock-text { color: var(--hud-amber); text-shadow: var(--glow-amber); }
 
 /* Boost gauge */
 #boost-gauge {
@@ -128,6 +175,16 @@ canvas#game-canvas { display: block; }
 #warning-low-alt.active, #warning-stall.active { opacity: 1; animation: hud-blink 0.8s ease-in-out infinite; }
 #warning-low-alt.critical { color: var(--hud-red); text-shadow: var(--glow-red); animation-duration: 0.4s; }
 @keyframes hud-blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+/* Kill popup */
+#kill-popup {
+  position: absolute; top: 38%; left: 50%; transform: translate(-50%,-50%);
+  font-family: var(--font-display); font-size: 20px; font-weight: 700;
+  letter-spacing: 4px; text-transform: uppercase;
+  color: var(--hud-red); text-shadow: var(--glow-red);
+  opacity: 0; pointer-events: none;
+}
+#kill-popup.show { animation: cp-flash 1.2s ease-out forwards; }
 
 /* Checkpoint popup */
 #checkpoint-popup {
@@ -291,6 +348,7 @@ canvas#game-canvas { display: block; }
   #throttle-bar { display: none; }
   #start-screen .title { font-size: 28px; letter-spacing: 3px; }
   #crash-overlay .crash-text { font-size: 36px; letter-spacing: 6px; }
+  #weapon-panel { bottom: 16px; gap: 10px; padding: 6px 14px; }
 }
 @media (max-width:480px) {
   .hud-value { font-size: 16px !important; }
@@ -321,6 +379,13 @@ canvas#game-canvas { display: block; }
       <div class="crosshair-v"></div>
       <div class="roll-marker"></div>
     </div>
+    <div id="lock-indicator">
+      <div class="lock-bracket tl"></div>
+      <div class="lock-bracket tr"></div>
+      <div class="lock-bracket bl"></div>
+      <div class="lock-bracket br"></div>
+      <div class="lock-text">LOCK</div>
+    </div>
     <div id="altimeter" class="hud-panel">
       <div class="hud-label">ALT</div>
       <div class="hud-value" id="altVal">0000</div>
@@ -331,6 +396,20 @@ canvas#game-canvas { display: block; }
       <div class="cp-label">checkpoints</div>
       <div class="elapsed" id="elapsedTime">00:00</div>
       <div class="time-label">time</div>
+      <div class="kill-count" id="killCount">0</div>
+      <div class="kill-label">kills</div>
+    </div>
+    <div id="weapon-panel" class="hud-panel">
+      <div>
+        <div class="weapon-label">MSL <span class="weapon-key">F</span></div>
+        <div class="reload-bar"><div class="reload-fill" id="reloadFill"></div></div>
+      </div>
+      <div class="ammo-dots" id="ammoDots">
+        <div class="ammo-dot"></div>
+        <div class="ammo-dot"></div>
+        <div class="ammo-dot"></div>
+        <div class="ammo-dot"></div>
+      </div>
     </div>
     <div id="boost-gauge">
       <div class="ring" id="boostRing"></div>
@@ -346,6 +425,7 @@ canvas#game-canvas { display: block; }
     <div id="warning-low-alt">⚠ PULL UP</div>
     <div id="warning-stall">⚠ STALL</div>
     <div id="checkpoint-popup">✓ CHECKPOINT</div>
+    <div id="kill-popup">✕ TARGET DESTROYED</div>
   </div>
   <div id="crash-overlay">
     <div class="backdrop"></div>
@@ -363,6 +443,7 @@ canvas#game-canvas { display: block; }
       <div class="key-row"><span class="key-name">가속</span><span class="key-bind">Shift</span></div>
       <div class="key-row"><span class="key-name">감속</span><span class="key-bind">Ctrl</span></div>
       <div class="key-row"><span class="key-name">부스트</span><span class="key-bind">Space</span></div>
+      <div class="key-row"><span class="key-name">미사일 발사</span><span class="key-bind">F</span></div>
       <div class="key-row"><span class="key-name">카메라 전환</span><span class="key-bind">C</span></div>
       <div class="key-row"><span class="key-name">일시정지</span><span class="key-bind">ESC</span></div>
     </div>
@@ -380,13 +461,12 @@ canvas#game-canvas { display: block; }
 <script type="module">
 import * as THREE from 'three';
 
-// ========== SIMPLEX NOISE (minimal) ==========
+// ========== SIMPLEX NOISE ==========
 class SimplexNoise {
   constructor(seed = Math.random()) {
     this.grad3 = [[1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],[1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],[0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]];
     this.p = [];
     for (let i = 0; i < 256; i++) this.p[i] = Math.floor(seed * 256 + i) % 256;
-    // shuffle
     for (let i = 255; i > 0; i--) {
       const j = Math.floor(((seed * 16807 + i * 2654435761) % 4294967296) / 4294967296 * (i + 1));
       [this.p[i], this.p[Math.abs(j) % 256]] = [this.p[Math.abs(j) % 256], this.p[i]];
@@ -428,14 +508,35 @@ const SEA_LEVEL = 0;
 const CLOUD_COUNT = 80;
 const CHECKPOINT_COUNT = 8;
 
+// Missile constants
+const MAX_AMMO = 4;
+const MISSILE_SPEED = 600;
+const MISSILE_LIFETIME = 4;
+const MISSILE_RELOAD_TIME = 2.5;
+const LOCK_RANGE = 800;
+const LOCK_ANGLE = 0.3; // radians (~17 degrees)
+
+// Enemy constants
+const ENEMY_COUNT = 12;
+const ENEMY_SPEED = 80;
+
 // ========== STATE ==========
-let gameState = 'menu'; // menu, playing, paused, crashed
+let gameState = 'menu';
 const keys = {};
 let throttle = 0.5, speed = 100, altitude = 300;
 let boostCooldown = 0, boostReady = true;
 let checkpointsHit = 0, elapsedMs = 0;
 let crashTimer = 0;
-let cameraMode = 0; // 0=third, 1=cockpit
+let cameraMode = 0;
+
+// Weapon state
+let ammo = MAX_AMMO;
+let reloadTimer = 0;
+let kills = 0;
+let lockedEnemy = null;
+const missiles = [];
+const explosions = [];
+const enemies = [];
 
 // ========== SCENE SETUP ==========
 const scene = new THREE.Scene();
@@ -477,14 +578,13 @@ for (let i = 0; i < positions.count; i++) {
   const x = positions.getX(i), z = positions.getZ(i);
   const h = getTerrainHeight(x, z);
   positions.setY(i, h);
-  // color by height
   const t = Math.max(0, Math.min(1, (h + 50) / (MAX_HEIGHT + 50)));
   let r, g, b;
-  if (h < SEA_LEVEL + 2) { r = 0.15; g = 0.4; b = 0.7; } // water
-  else if (t < 0.25) { r = 0.2; g = 0.55; b = 0.15; } // grass
-  else if (t < 0.5) { r = 0.35; g = 0.5; b = 0.2; } // hills
-  else if (t < 0.75) { r = 0.45; g = 0.38; b = 0.28; } // rock
-  else { r = 0.85; g = 0.88; b = 0.92; } // snow
+  if (h < SEA_LEVEL + 2) { r = 0.15; g = 0.4; b = 0.7; }
+  else if (t < 0.25) { r = 0.2; g = 0.55; b = 0.15; }
+  else if (t < 0.5) { r = 0.35; g = 0.5; b = 0.2; }
+  else if (t < 0.75) { r = 0.45; g = 0.38; b = 0.28; }
+  else { r = 0.85; g = 0.88; b = 0.92; }
   colors[i * 3] = r; colors[i * 3 + 1] = g; colors[i * 3 + 2] = b;
 }
 terrainGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
@@ -503,33 +603,27 @@ scene.add(water);
 
 // ========== AIRPLANE ==========
 const planeGroup = new THREE.Group();
-// Fuselage
 const fuselageGeo = new THREE.ConeGeometry(1.5, 12, 8);
 fuselageGeo.rotateX(Math.PI / 2);
 const fuselageMat = new THREE.MeshPhongMaterial({ color: 0xcccccc, shininess: 80 });
 const fuselage = new THREE.Mesh(fuselageGeo, fuselageMat);
 planeGroup.add(fuselage);
-// Wings
 const wingGeo = new THREE.BoxGeometry(20, 0.3, 3);
 const wingMat = new THREE.MeshPhongMaterial({ color: 0x999999, shininess: 60 });
 const wings = new THREE.Mesh(wingGeo, wingMat);
 wings.position.z = 1;
 planeGroup.add(wings);
-// Tail wing
 const tailGeo = new THREE.BoxGeometry(6, 0.2, 1.5);
 const tail = new THREE.Mesh(tailGeo, wingMat);
 tail.position.z = 5;
 planeGroup.add(tail);
-// Vertical stabilizer
 const vStabGeo = new THREE.BoxGeometry(0.2, 3, 2);
 const vStab = new THREE.Mesh(vStabGeo, wingMat);
 vStab.position.set(0, 1.5, 5);
 planeGroup.add(vStab);
-// Engine glow
 const engineGlow = new THREE.PointLight(0x00bbff, 1, 20);
 engineGlow.position.z = 6;
 planeGroup.add(engineGlow);
-
 planeGroup.position.set(0, 300, 0);
 scene.add(planeGroup);
 
@@ -598,6 +692,340 @@ for (let i = 0; i < 40; i++) {
 }
 scene.add(buildingGroup);
 
+// ========== ENEMIES (DRONES) ==========
+const enemyGroup = new THREE.Group();
+scene.add(enemyGroup);
+
+function createDroneMesh() {
+  const g = new THREE.Group();
+  // body
+  const bodyGeo = new THREE.OctahedronGeometry(4, 0);
+  const bodyMat = new THREE.MeshPhongMaterial({ color: 0xcc2233, emissive: 0x550011, emissiveIntensity: 0.3, shininess: 80 });
+  const body = new THREE.Mesh(bodyGeo, bodyMat);
+  body.scale.set(1, 0.5, 1.5);
+  g.add(body);
+  // wings
+  const dwGeo = new THREE.BoxGeometry(12, 0.2, 2);
+  const dwMat = new THREE.MeshPhongMaterial({ color: 0x881122, shininess: 40 });
+  const dw = new THREE.Mesh(dwGeo, dwMat);
+  g.add(dw);
+  // engine glow
+  const eGlow = new THREE.PointLight(0xff3344, 0.8, 15);
+  eGlow.position.z = 3;
+  g.add(eGlow);
+  return g;
+}
+
+function spawnEnemies() {
+  // Clear existing
+  enemies.forEach(e => { if (e.mesh) enemyGroup.remove(e.mesh); });
+  enemies.length = 0;
+  for (let i = 0; i < ENEMY_COUNT; i++) {
+    const x = (Math.random() - 0.5) * WORLD_SIZE * 0.9;
+    const z = (Math.random() - 0.5) * WORLD_SIZE * 0.9;
+    const th = getTerrainHeight(x, z);
+    const y = Math.max(th + 60, 120) + Math.random() * 300;
+    const mesh = createDroneMesh();
+    mesh.position.set(x, y, z);
+    // random heading
+    const heading = Math.random() * Math.PI * 2;
+    mesh.rotation.y = heading;
+    enemyGroup.add(mesh);
+    enemies.push({
+      mesh, alive: true,
+      vx: Math.sin(heading) * ENEMY_SPEED,
+      vz: Math.cos(heading) * ENEMY_SPEED,
+      turnTimer: 2 + Math.random() * 4,
+      bobPhase: Math.random() * Math.PI * 2,
+    });
+  }
+}
+spawnEnemies();
+
+function updateEnemies(dt) {
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    // Movement
+    e.mesh.position.x += e.vx * dt;
+    e.mesh.position.z += e.vz * dt;
+    // Bob up and down
+    e.bobPhase += dt * 1.5;
+    e.mesh.position.y += Math.sin(e.bobPhase) * dt * 8;
+    // Clamp altitude
+    const th = getTerrainHeight(e.mesh.position.x, e.mesh.position.z);
+    if (e.mesh.position.y < th + 40) e.mesh.position.y = th + 40;
+    if (e.mesh.position.y > 600) e.mesh.position.y = 600;
+    // Turn randomly
+    e.turnTimer -= dt;
+    if (e.turnTimer <= 0) {
+      e.turnTimer = 3 + Math.random() * 5;
+      const newHeading = Math.random() * Math.PI * 2;
+      e.vx = Math.sin(newHeading) * ENEMY_SPEED;
+      e.vz = Math.cos(newHeading) * ENEMY_SPEED;
+      e.mesh.rotation.y = newHeading;
+    }
+    // World wrap
+    if (e.mesh.position.x > WORLD_SIZE) e.mesh.position.x = -WORLD_SIZE;
+    if (e.mesh.position.x < -WORLD_SIZE) e.mesh.position.x = WORLD_SIZE;
+    if (e.mesh.position.z > WORLD_SIZE) e.mesh.position.z = -WORLD_SIZE;
+    if (e.mesh.position.z < -WORLD_SIZE) e.mesh.position.z = WORLD_SIZE;
+    // Slight roll wobble
+    e.mesh.rotation.z = Math.sin(e.bobPhase * 0.7) * 0.15;
+  });
+}
+
+// ========== MISSILES ==========
+const missileGeo = new THREE.CylinderGeometry(0.3, 0.3, 3, 6);
+missileGeo.rotateX(Math.PI / 2);
+const missileMat = new THREE.MeshPhongMaterial({ color: 0xff4444, emissive: 0xff2222, emissiveIntensity: 0.5 });
+const missileGroup = new THREE.Group();
+scene.add(missileGroup);
+
+// Trail particles (reusable pool)
+const trailGeo = new THREE.SphereGeometry(0.4, 4, 4);
+const trailMat = new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.6 });
+
+function fireMissile() {
+  if (ammo <= 0 || gameState !== 'playing') return;
+  ammo--;
+  const m = new THREE.Mesh(missileGeo, missileMat.clone());
+  // Spawn from plane nose
+  const spawnOffset = new THREE.Vector3(0, -1, -8);
+  spawnOffset.applyQuaternion(planeGroup.quaternion);
+  m.position.copy(planeGroup.position).add(spawnOffset);
+  m.quaternion.copy(planeGroup.quaternion);
+  // Direction
+  const dir = new THREE.Vector3(0, 0, -1);
+  dir.applyQuaternion(planeGroup.quaternion);
+  // Engine flame
+  const flame = new THREE.PointLight(0xff6600, 2, 30);
+  flame.position.z = 2;
+  m.add(flame);
+  missileGroup.add(m);
+  const trail = [];
+  missiles.push({
+    mesh: m, dir: dir.clone(), life: MISSILE_LIFETIME, trail,
+    target: lockedEnemy, speed: MISSILE_SPEED,
+  });
+}
+
+function updateMissiles(dt) {
+  for (let i = missiles.length - 1; i >= 0; i--) {
+    const m = missiles[i];
+    m.life -= dt;
+    // Homing towards locked target
+    if (m.target && m.target.alive) {
+      const toTarget = new THREE.Vector3().subVectors(m.target.mesh.position, m.mesh.position).normalize();
+      m.dir.lerp(toTarget, dt * 3);
+      m.dir.normalize();
+    }
+    // Move
+    m.mesh.position.addScaledVector(m.dir, m.speed * dt);
+    // Orient missile
+    const lookAt = m.mesh.position.clone().add(m.dir);
+    m.mesh.lookAt(lookAt);
+    // Trail particles
+    if (Math.random() < 0.7) {
+      const tp = new THREE.Mesh(trailGeo, trailMat.clone());
+      tp.position.copy(m.mesh.position);
+      tp.scale.setScalar(0.5 + Math.random() * 0.5);
+      scene.add(tp);
+      m.trail.push({ mesh: tp, life: 0.8 });
+    }
+    // Update trail
+    for (let j = m.trail.length - 1; j >= 0; j--) {
+      m.trail[j].life -= dt;
+      m.trail[j].mesh.material.opacity = m.trail[j].life;
+      m.trail[j].mesh.scale.multiplyScalar(1 - dt * 2);
+      if (m.trail[j].life <= 0) {
+        scene.remove(m.trail[j].mesh);
+        m.trail[j].mesh.geometry.dispose();
+        m.trail[j].mesh.material.dispose();
+        m.trail.splice(j, 1);
+      }
+    }
+    // Check enemy collision
+    let hit = false;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const dist = m.mesh.position.distanceTo(e.mesh.position);
+      if (dist < 15) {
+        // Hit!
+        e.alive = false;
+        e.mesh.visible = false;
+        createExplosion(e.mesh.position.clone(), 1.5);
+        kills++;
+        showKillPopup();
+        hit = true;
+        // Respawn enemy after delay
+        setTimeout(() => {
+          if (gameState === 'menu') return;
+          e.alive = true;
+          e.mesh.visible = true;
+          e.mesh.position.set(
+            (Math.random() - 0.5) * WORLD_SIZE * 0.9,
+            200 + Math.random() * 200,
+            (Math.random() - 0.5) * WORLD_SIZE * 0.9
+          );
+        }, 8000);
+        break;
+      }
+    }
+    // Check terrain collision
+    const th = getTerrainHeight(m.mesh.position.x, m.mesh.position.z);
+    if (m.mesh.position.y <= th + 2) {
+      createExplosion(m.mesh.position.clone(), 0.8);
+      hit = true;
+    }
+    // Remove missile
+    if (m.life <= 0 || hit) {
+      missileGroup.remove(m.mesh);
+      m.mesh.traverse(child => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+      });
+      // Clean remaining trail
+      m.trail.forEach(t => {
+        scene.remove(t.mesh);
+        t.mesh.geometry.dispose();
+        t.mesh.material.dispose();
+      });
+      missiles.splice(i, 1);
+    }
+  }
+  // Reload ammo
+  if (ammo < MAX_AMMO) {
+    reloadTimer += dt;
+    if (reloadTimer >= MISSILE_RELOAD_TIME) {
+      ammo++;
+      reloadTimer = 0;
+    }
+  } else {
+    reloadTimer = 0;
+  }
+}
+
+// ========== EXPLOSIONS ==========
+const explosionPool = [];
+function createExplosion(pos, scale = 1) {
+  const particleCount = 30;
+  const particles = [];
+  for (let i = 0; i < particleCount; i++) {
+    const geo = new THREE.SphereGeometry(1 + Math.random() * 2, 6, 6);
+    const isFlame = Math.random() < 0.6;
+    const mat = new THREE.MeshBasicMaterial({
+      color: isFlame ? new THREE.Color().setHSL(0.05 + Math.random() * 0.08, 1, 0.5 + Math.random() * 0.3) : 0x444444,
+      transparent: true, opacity: 1,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(pos);
+    mesh.scale.setScalar(scale);
+    const vel = new THREE.Vector3(
+      (Math.random() - 0.5) * 80,
+      (Math.random() - 0.3) * 60,
+      (Math.random() - 0.5) * 80
+    );
+    scene.add(mesh);
+    particles.push({ mesh, vel, life: 0.6 + Math.random() * 0.8 });
+  }
+  // Flash light
+  const flash = new THREE.PointLight(0xff6600, 10, 100);
+  flash.position.copy(pos);
+  scene.add(flash);
+  explosions.push({ particles, flash, flashLife: 0.3 });
+}
+
+function updateExplosions(dt) {
+  for (let i = explosions.length - 1; i >= 0; i--) {
+    const ex = explosions[i];
+    // Flash fade
+    ex.flashLife -= dt;
+    if (ex.flashLife > 0) {
+      ex.flash.intensity = (ex.flashLife / 0.3) * 10;
+    } else {
+      scene.remove(ex.flash);
+      ex.flash.dispose();
+      ex.flash = null;
+    }
+    // Particles
+    let allDead = true;
+    for (let j = ex.particles.length - 1; j >= 0; j--) {
+      const p = ex.particles[j];
+      p.life -= dt;
+      if (p.life <= 0) {
+        scene.remove(p.mesh);
+        p.mesh.geometry.dispose();
+        p.mesh.material.dispose();
+        ex.particles.splice(j, 1);
+        continue;
+      }
+      allDead = false;
+      p.mesh.position.addScaledVector(p.vel, dt);
+      p.vel.y -= 30 * dt; // gravity
+      p.vel.multiplyScalar(1 - dt * 2); // drag
+      p.mesh.material.opacity = Math.max(0, p.life);
+      p.mesh.scale.multiplyScalar(1 - dt * 0.5);
+    }
+    if (allDead && ex.flashLife <= 0) {
+      if (ex.flash) { scene.remove(ex.flash); ex.flash.dispose(); }
+      explosions.splice(i, 1);
+    }
+  }
+}
+
+// ========== LOCK-ON DETECTION ==========
+function updateLockOn() {
+  const forward = new THREE.Vector3(0, 0, -1);
+  forward.applyQuaternion(planeGroup.quaternion);
+  let bestEnemy = null;
+  let bestDot = -1;
+  let bestDist = Infinity;
+  for (const e of enemies) {
+    if (!e.alive) continue;
+    const toEnemy = new THREE.Vector3().subVectors(e.mesh.position, planeGroup.position);
+    const dist = toEnemy.length();
+    if (dist > LOCK_RANGE) continue;
+    toEnemy.normalize();
+    const dot = forward.dot(toEnemy);
+    const angle = Math.acos(Math.min(1, dot));
+    if (angle < LOCK_ANGLE && dot > bestDot) {
+      bestDot = dot;
+      bestDist = dist;
+      bestEnemy = e;
+    }
+  }
+  lockedEnemy = bestEnemy;
+  const lockEl = document.getElementById('lock-indicator');
+  if (bestEnemy) {
+    lockEl.classList.add('active');
+    if (bestDist < 400) {
+      lockEl.classList.add('locked');
+      lockEl.classList.remove('tracking');
+    } else {
+      lockEl.classList.remove('locked');
+      lockEl.classList.add('tracking');
+    }
+  } else {
+    lockEl.classList.remove('active', 'locked', 'tracking');
+  }
+}
+
+// ========== POPUPS ==========
+function showKillPopup() {
+  const el = document.getElementById('kill-popup');
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1200);
+}
+function showCheckpointPopup() {
+  const el = document.getElementById('checkpoint-popup');
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 1200);
+}
+
 // ========== INPUT ==========
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
@@ -607,6 +1035,7 @@ window.addEventListener('keydown', e => {
   }
   if (e.code === 'KeyC' && gameState === 'playing') cameraMode = (cameraMode + 1) % 2;
   if (e.code === 'Space' && gameState === 'playing' && boostReady) activateBoost();
+  if (e.code === 'KeyF' && gameState === 'playing') fireMissile();
   e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
@@ -623,7 +1052,9 @@ function startGame() {
   gameState = 'playing';
   resetPlane();
   spawnCheckpoints();
+  spawnEnemies();
   checkpointsHit = 0; elapsedMs = 0; cameraMode = 0;
+  kills = 0; ammo = MAX_AMMO; reloadTimer = 0;
 }
 function resetPlane() {
   planeGroup.position.set(0, 300, 0);
@@ -645,7 +1076,14 @@ function restartGame() {
   gameState = 'playing';
   resetPlane();
   spawnCheckpoints();
+  spawnEnemies();
   checkpointsHit = 0; elapsedMs = 0;
+  kills = 0; ammo = MAX_AMMO; reloadTimer = 0;
+  // Clear missiles
+  missiles.forEach(m => { missileGroup.remove(m.mesh); m.trail.forEach(t => scene.remove(t.mesh)); });
+  missiles.length = 0;
+  explosions.forEach(ex => { ex.particles.forEach(p => scene.remove(p.mesh)); if (ex.flash) scene.remove(ex.flash); });
+  explosions.length = 0;
 }
 function activateBoost() {
   if (!boostReady) return;
@@ -679,10 +1117,8 @@ const mmCtx = document.getElementById('minimapCanvas').getContext('2d');
 function updateMinimap() {
   const size = 140, half = size / 2;
   mmCtx.clearRect(0, 0, size, size);
-  // terrain background
   mmCtx.fillStyle = 'rgba(10,14,23,0.3)';
   mmCtx.fillRect(0, 0, size, size);
-  // draw terrain dots
   const scale = size / (WORLD_SIZE * 1.5);
   const px = planeGroup.position.x, pz = planeGroup.position.z;
   for (let dx = -half; dx < half; dx += 4) {
@@ -709,6 +1145,19 @@ function updateMinimap() {
       mmCtx.shadowBlur = 0;
     }
   });
+  // enemies on minimap (red dots)
+  enemies.forEach(e => {
+    if (!e.alive) return;
+    const ex = half + (e.mesh.position.x - px) * scale;
+    const ey = half + (e.mesh.position.z - pz) * scale;
+    if (ex > 0 && ex < size && ey > 0 && ey < size) {
+      mmCtx.fillStyle = '#FF2E4C';
+      mmCtx.shadowColor = '#FF2E4C';
+      mmCtx.shadowBlur = 4;
+      mmCtx.beginPath(); mmCtx.arc(ex, ey, 3, 0, Math.PI * 2); mmCtx.fill();
+      mmCtx.shadowBlur = 0;
+    }
+  });
   // player
   mmCtx.fillStyle = '#00F3FF';
   mmCtx.shadowColor = '#00F3FF';
@@ -724,6 +1173,7 @@ function updateHUD() {
   document.getElementById('thrFill').style.height = (throttle * 100) + '%';
   document.getElementById('thrVal').textContent = Math.round(throttle * 100) + '%';
   document.getElementById('cpCount').textContent = checkpointsHit;
+  document.getElementById('killCount').textContent = kills;
   const sec = Math.floor(elapsedMs / 1000);
   const min = Math.floor(sec / 60);
   document.getElementById('elapsedTime').textContent = String(min).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
@@ -744,6 +1194,18 @@ function updateHUD() {
   else if (altitude < 150) { warnAlt.className = 'active'; dangerOv.classList.remove('active'); }
   else { warnAlt.className = ''; dangerOv.classList.remove('active'); }
   if (speed < 60) { warnStall.className = 'active'; } else { warnStall.className = ''; }
+  // Ammo dots
+  const dots = document.querySelectorAll('#ammoDots .ammo-dot');
+  dots.forEach((dot, idx) => {
+    dot.classList.toggle('empty', idx >= ammo);
+  });
+  // Reload bar
+  const reloadFill = document.getElementById('reloadFill');
+  if (ammo < MAX_AMMO) {
+    reloadFill.style.width = (reloadTimer / MISSILE_RELOAD_TIME * 100) + '%';
+  } else {
+    reloadFill.style.width = '100%';
+  }
 }
 
 // ========== CHECKPOINT CHECK ==========
@@ -761,19 +1223,11 @@ function checkCheckpoints() {
       cp.mesh.material.emissive.setHex(0x00F3FF);
       checkpointsHit++;
       showCheckpointPopup();
-      // respawn more if all hit
       if (checkpoints.every(c => c.hit)) {
         setTimeout(() => spawnCheckpoints(), 1000);
       }
     }
   });
-}
-function showCheckpointPopup() {
-  const el = document.getElementById('checkpoint-popup');
-  el.classList.remove('show');
-  void el.offsetWidth; // reflow
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 1200);
 }
 
 // ========== MAIN LOOP ==========
@@ -801,9 +1255,7 @@ function animate() {
     if (keys['KeyD'] || keys['ArrowRight']) planeGroup.rotation.z -= rollRate * dt;
     if (keys['KeyW'] || keys['ArrowUp']) planeGroup.rotation.x -= pitchRate * dt;
     if (keys['KeyS'] || keys['ArrowDown']) planeGroup.rotation.x += pitchRate * dt;
-    // Auto-level roll slightly
     planeGroup.rotation.z *= (1 - 0.3 * dt);
-    // Yaw from roll
     planeGroup.rotation.y -= Math.sin(planeGroup.rotation.z) * dt * 0.8;
     // Move forward
     const forward = new THREE.Vector3(0, 0, -1);
@@ -827,6 +1279,10 @@ function animate() {
     if (planeGroup.position.z < -WORLD_SIZE) planeGroup.position.z = WORLD_SIZE;
 
     checkCheckpoints();
+    updateEnemies(dt);
+    updateMissiles(dt);
+    updateExplosions(dt);
+    updateLockOn();
     // Engine glow
     engineGlow.intensity = 0.5 + throttle * 2;
     // Animate checkpoint rings
@@ -835,13 +1291,11 @@ function animate() {
     });
     // Camera
     if (cameraMode === 0) {
-      // Third person
       const camOffset = new THREE.Vector3(0, 8, 30);
       camOffset.applyQuaternion(planeGroup.quaternion);
       camera.position.lerp(planeGroup.position.clone().add(camOffset), dt * 5);
       camera.lookAt(planeGroup.position);
     } else {
-      // Cockpit
       const cockpitPos = new THREE.Vector3(0, 2, -4);
       cockpitPos.applyQuaternion(planeGroup.quaternion);
       camera.position.copy(planeGroup.position.clone().add(cockpitPos));
@@ -858,12 +1312,14 @@ function animate() {
       document.getElementById('crash-overlay').classList.remove('active');
       gameState = 'playing';
       resetPlane();
+      ammo = MAX_AMMO; reloadTimer = 0;
     }
+    updateExplosions(dt);
   } else if (gameState === 'menu') {
-    // Slowly rotate camera around scene
     const t = clock.elapsedTime * 0.1;
     camera.position.set(Math.sin(t) * 600, 350, Math.cos(t) * 600);
     camera.lookAt(0, 100, 0);
+    updateEnemies(dt);
   }
 
   renderer.render(scene, camera);
