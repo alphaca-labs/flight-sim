@@ -781,9 +781,36 @@ const missileMat = new THREE.MeshPhongMaterial({ color: 0xff4444, emissive: 0xff
 const missileGroup = new THREE.Group();
 scene.add(missileGroup);
 
-// Trail particles (reusable pool)
+// Trail particle pool (reuse objects instead of creating new ones)
 const trailGeo = new THREE.SphereGeometry(0.4, 4, 4);
-const trailMat = new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.6 });
+const TRAIL_POOL_SIZE = 120;
+const MAX_TRAIL_PER_MISSILE = 25;
+const trailPool = [];
+const trailPoolInUse = new Set();
+for (let i = 0; i < TRAIL_POOL_SIZE; i++) {
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffaa44, transparent: true, opacity: 0.6 });
+  const mesh = new THREE.Mesh(trailGeo, mat);
+  mesh.visible = false;
+  scene.add(mesh);
+  trailPool.push(mesh);
+}
+function getTrailParticle() {
+  for (let i = 0; i < trailPool.length; i++) {
+    if (!trailPoolInUse.has(i)) {
+      trailPoolInUse.add(i);
+      const m = trailPool[i];
+      m.visible = true;
+      m.material.opacity = 0.6;
+      m.scale.setScalar(0.5 + Math.random() * 0.5);
+      return { mesh: m, poolIdx: i };
+    }
+  }
+  return null; // pool exhausted
+}
+function returnTrailParticle(poolIdx) {
+  trailPool[poolIdx].visible = false;
+  trailPoolInUse.delete(poolIdx);
+}
 
 function fireMissile() {
   if (ammo <= 0 || gameState !== 'playing') return;
@@ -824,23 +851,22 @@ function updateMissiles(dt) {
     // Orient missile
     const lookAt = m.mesh.position.clone().add(m.dir);
     m.mesh.lookAt(lookAt);
-    // Trail particles
-    if (Math.random() < 0.7) {
-      const tp = new THREE.Mesh(trailGeo, trailMat.clone());
-      tp.position.copy(m.mesh.position);
-      tp.scale.setScalar(0.5 + Math.random() * 0.5);
-      scene.add(tp);
-      m.trail.push({ mesh: tp, life: 0.8 });
+    // Trail particles (pooled)
+    if (Math.random() < 0.4 && m.trail.length < MAX_TRAIL_PER_MISSILE) {
+      const tp = getTrailParticle();
+      if (tp) {
+        tp.mesh.position.copy(m.mesh.position);
+        m.trail.push({ poolIdx: tp.poolIdx, life: 0.6 });
+      }
     }
     // Update trail
     for (let j = m.trail.length - 1; j >= 0; j--) {
       m.trail[j].life -= dt;
-      m.trail[j].mesh.material.opacity = m.trail[j].life;
-      m.trail[j].mesh.scale.multiplyScalar(1 - dt * 2);
+      const tp = trailPool[m.trail[j].poolIdx];
+      tp.material.opacity = Math.max(0, m.trail[j].life);
+      tp.scale.multiplyScalar(1 - dt * 2);
       if (m.trail[j].life <= 0) {
-        scene.remove(m.trail[j].mesh);
-        m.trail[j].mesh.geometry.dispose();
-        m.trail[j].mesh.material.dispose();
+        returnTrailParticle(m.trail[j].poolIdx);
         m.trail.splice(j, 1);
       }
     }
@@ -884,11 +910,9 @@ function updateMissiles(dt) {
         if (child.geometry) child.geometry.dispose();
         if (child.material) child.material.dispose();
       });
-      // Clean remaining trail
+      // Return remaining trail particles to pool
       m.trail.forEach(t => {
-        scene.remove(t.mesh);
-        t.mesh.geometry.dispose();
-        t.mesh.material.dispose();
+        returnTrailParticle(t.poolIdx);
       });
       missiles.splice(i, 1);
     }
@@ -905,69 +929,106 @@ function updateMissiles(dt) {
   }
 }
 
-// ========== EXPLOSIONS ==========
-const explosionPool = [];
+// ========== EXPLOSIONS (pooled) ==========
+const EXPLOSION_PARTICLE_COUNT = 12; // reduced from 30
+const EXPLOSION_POOL_SIZE = 80;
+const expGeo = new THREE.SphereGeometry(1.5, 4, 4);
+const expPool = [];
+const expPoolInUse = new Set();
+for (let i = 0; i < EXPLOSION_POOL_SIZE; i++) {
+  const mat = new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 1 });
+  const mesh = new THREE.Mesh(expGeo, mat);
+  mesh.visible = false;
+  scene.add(mesh);
+  expPool.push(mesh);
+}
+function getExpParticle() {
+  for (let i = 0; i < expPool.length; i++) {
+    if (!expPoolInUse.has(i)) {
+      expPoolInUse.add(i);
+      const m = expPool[i];
+      m.visible = true;
+      m.material.opacity = 1;
+      m.scale.setScalar(1);
+      return { mesh: m, poolIdx: i };
+    }
+  }
+  return null;
+}
+function returnExpParticle(poolIdx) {
+  expPool[poolIdx].visible = false;
+  expPoolInUse.delete(poolIdx);
+}
+
+// Reuse flash lights
+const MAX_FLASH_LIGHTS = 4;
+const flashPool = [];
+for (let i = 0; i < MAX_FLASH_LIGHTS; i++) {
+  const light = new THREE.PointLight(0xff6600, 0, 100);
+  light.visible = false;
+  scene.add(light);
+  flashPool.push({ light, inUse: false });
+}
+function getFlashLight() {
+  for (const f of flashPool) {
+    if (!f.inUse) { f.inUse = true; f.light.visible = true; f.light.intensity = 10; return f; }
+  }
+  return null;
+}
+
 function createExplosion(pos, scale = 1) {
-  const particleCount = 30;
   const particles = [];
-  for (let i = 0; i < particleCount; i++) {
-    const geo = new THREE.SphereGeometry(1 + Math.random() * 2, 6, 6);
+  for (let i = 0; i < EXPLOSION_PARTICLE_COUNT; i++) {
+    const tp = getExpParticle();
+    if (!tp) break;
     const isFlame = Math.random() < 0.6;
-    const mat = new THREE.MeshBasicMaterial({
-      color: isFlame ? new THREE.Color().setHSL(0.05 + Math.random() * 0.08, 1, 0.5 + Math.random() * 0.3) : 0x444444,
-      transparent: true, opacity: 1,
-    });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.copy(pos);
-    mesh.scale.setScalar(scale);
+    tp.mesh.material.color.setHSL(isFlame ? 0.05 + Math.random() * 0.08 : 0, isFlame ? 1 : 0, isFlame ? 0.5 + Math.random() * 0.3 : 0.27);
+    tp.mesh.position.copy(pos);
+    tp.mesh.scale.setScalar(scale);
     const vel = new THREE.Vector3(
       (Math.random() - 0.5) * 80,
       (Math.random() - 0.3) * 60,
       (Math.random() - 0.5) * 80
     );
-    scene.add(mesh);
-    particles.push({ mesh, vel, life: 0.6 + Math.random() * 0.8 });
+    particles.push({ poolIdx: tp.poolIdx, vel, life: 0.5 + Math.random() * 0.6 });
   }
-  // Flash light
-  const flash = new THREE.PointLight(0xff6600, 10, 100);
-  flash.position.copy(pos);
-  scene.add(flash);
-  explosions.push({ particles, flash, flashLife: 0.3 });
+  const flash = getFlashLight();
+  if (flash) { flash.light.position.copy(pos); }
+  explosions.push({ particles, flash, flashLife: 0.25 });
 }
 
 function updateExplosions(dt) {
   for (let i = explosions.length - 1; i >= 0; i--) {
     const ex = explosions[i];
-    // Flash fade
     ex.flashLife -= dt;
-    if (ex.flashLife > 0) {
-      ex.flash.intensity = (ex.flashLife / 0.3) * 10;
-    } else {
-      scene.remove(ex.flash);
-      ex.flash.dispose();
-      ex.flash = null;
+    if (ex.flash) {
+      if (ex.flashLife > 0) {
+        ex.flash.light.intensity = (ex.flashLife / 0.25) * 10;
+      } else {
+        ex.flash.light.visible = false;
+        ex.flash.inUse = false;
+        ex.flash = null;
+      }
     }
-    // Particles
     let allDead = true;
     for (let j = ex.particles.length - 1; j >= 0; j--) {
       const p = ex.particles[j];
       p.life -= dt;
       if (p.life <= 0) {
-        scene.remove(p.mesh);
-        p.mesh.geometry.dispose();
-        p.mesh.material.dispose();
+        returnExpParticle(p.poolIdx);
         ex.particles.splice(j, 1);
         continue;
       }
       allDead = false;
-      p.mesh.position.addScaledVector(p.vel, dt);
-      p.vel.y -= 30 * dt; // gravity
-      p.vel.multiplyScalar(1 - dt * 2); // drag
-      p.mesh.material.opacity = Math.max(0, p.life);
-      p.mesh.scale.multiplyScalar(1 - dt * 0.5);
+      const mesh = expPool[p.poolIdx];
+      mesh.position.addScaledVector(p.vel, dt);
+      p.vel.y -= 30 * dt;
+      p.vel.multiplyScalar(1 - dt * 2);
+      mesh.material.opacity = Math.max(0, p.life);
+      mesh.scale.multiplyScalar(1 - dt * 0.5);
     }
     if (allDead && ex.flashLife <= 0) {
-      if (ex.flash) { scene.remove(ex.flash); ex.flash.dispose(); }
+      if (ex.flash) { ex.flash.light.visible = false; ex.flash.inUse = false; }
       explosions.splice(i, 1);
     }
   }
@@ -1079,10 +1140,17 @@ function restartGame() {
   spawnEnemies();
   checkpointsHit = 0; elapsedMs = 0;
   kills = 0; ammo = MAX_AMMO; reloadTimer = 0;
-  // Clear missiles
-  missiles.forEach(m => { missileGroup.remove(m.mesh); m.trail.forEach(t => scene.remove(t.mesh)); });
+  // Clear missiles + return pooled particles
+  missiles.forEach(m => {
+    missileGroup.remove(m.mesh);
+    m.mesh.traverse(child => { if (child.geometry) child.geometry.dispose(); if (child.material) child.material.dispose(); });
+    m.trail.forEach(t => returnTrailParticle(t.poolIdx));
+  });
   missiles.length = 0;
-  explosions.forEach(ex => { ex.particles.forEach(p => scene.remove(p.mesh)); if (ex.flash) scene.remove(ex.flash); });
+  explosions.forEach(ex => {
+    ex.particles.forEach(p => returnExpParticle(p.poolIdx));
+    if (ex.flash) { ex.flash.light.visible = false; ex.flash.inUse = false; }
+  });
   explosions.length = 0;
 }
 function activateBoost() {
